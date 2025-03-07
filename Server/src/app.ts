@@ -15,8 +15,8 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req: Request, res: Response): void => {
-  res.send("Hello mf");
-});
+import routers from "./Routers/user.routes";
+
+app.use("/api/v1/users", routers);
 
 export default app;
