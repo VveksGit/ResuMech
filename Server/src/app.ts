@@ -1,5 +1,4 @@
 import express from "express";
-import { Request, Response } from "express";
 import cors from "cors";
 
 const app = express();
@@ -11,9 +10,13 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "15kb",
+  })
+);
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "15kb" }));
 
 import routers from "./Routers/user.routes";
 

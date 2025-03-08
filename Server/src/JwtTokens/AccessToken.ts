@@ -13,9 +13,8 @@ const generateAccessToken = (user: user) => {
       "ACCESS_TOKEN_SECRET is not defined in environment variables"
     );
   }
-  const expiresIn = process.env.ACCESS_TOKEN_LIFE
-    ? parseInt(process.env.ACCESS_TOKEN_LIFE, 10)
-    : "10m";
+  const expiresIn = (process.env.ACCESS_TOKEN_LIFE ||
+    "10m") as jwt.SignOptions["expiresIn"];
 
   const options: jwt.SignOptions = { expiresIn };
 

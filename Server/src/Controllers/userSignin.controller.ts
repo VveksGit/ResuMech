@@ -28,6 +28,7 @@ const signinUser = async (
     if (!isPassMatch) {
       res.status(400).json({ message: "Wrong Password!" });
     }
+
     const accessToken = generateAccessToken(userExists);
     const refreshToken = generateRefreshToken(userExists);
 

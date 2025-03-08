@@ -15,9 +15,8 @@ const generateRefreshToken = (user: user) => {
     );
   }
 
-  const expiresIn = process.env.REFRESH_TOKEN_LIFE
-    ? parseInt(process.env.REFRESH_TOKEN_LIFE, 10)
-    : "1d";
+  const expiresIn = (process.env.REFRESH_TOKEN_LIFE ||
+    "1d") as jwt.SignOptions["expiresIn"];
 
   const options: jwt.SignOptions = { expiresIn };
 
