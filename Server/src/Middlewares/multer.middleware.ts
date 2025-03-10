@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import { Request } from "express";
 
-const uploadPath = path.join(__dirname, "../../public/temp");
+const uploadPath = path.join(__dirname, "../../public/pdfFiles");
 
 // Ensure directory exists (This code is for making the dir if it does not exist!)
 // if (!fs.existsSync(uploadPath)) {
