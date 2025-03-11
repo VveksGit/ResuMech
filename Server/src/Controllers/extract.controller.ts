@@ -3,6 +3,15 @@ import pdf from "pdf-parse";
 import { fromPath as pdfToImage } from "pdf2pic";
 import Tesseract from "tesseract.js";
 
+const cleanText = (text: string): string => {
+  return text
+    .replace(/\n\s+/g, "\n") // Remove spaces after newlines
+    .replace(/•|/g, "-") // Replace bullet symbols with a hyphen
+    .replace(/\n{2,}/g, "\n\n") // Ensure only one blank line between sections
+    .replace(/(\w+)\n(\w+)/g, "$1 $2") // Fix broken words split by a newline
+    .trim(); // Trim extra spaces at the start/end
+};
+
 export const extractTextFromPDF = async (
   pdfPath: string
 ): Promise<string | null> => {
@@ -16,7 +25,7 @@ export const extractTextFromPDF = async (
 
   if (extractedText.length > 0) {
     console.log("Extracted text using pdf-parse");
-    return extractedText;
+    return cleanText(extractedText);
   }
   console.log("No text found in pdf-parse. Switching to OCR... ");
   return null;
@@ -48,7 +57,7 @@ export const extractedTextFromImage = async (
 
     if (extractedText.length > 0) {
       console.log("Extracted text using OCR.");
-      return extractedText;
+      return cleanText(extractedText);
     } else {
       console.log("OCR extraction failed.");
       return null;
