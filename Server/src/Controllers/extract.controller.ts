@@ -5,10 +5,15 @@ import Tesseract from "tesseract.js";
 
 const cleanText = (text: string): string => {
   return text
+    .normalize("NFKD") // Normalize Unicode characters
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width spaces
+    .replace(/[^\x00-\x7F]+/g, " ") // Remove non-ASCII characters
     .replace(/\n\s+/g, "\n") // Remove spaces after newlines
-    .replace(/•|/g, "-") // Replace bullet symbols with a hyphen
-    .replace(/\n{2,}/g, "\n\n") // Ensure only one blank line between sections
-    .replace(/(\w+)\n(\w+)/g, "$1 $2") // Fix broken words split by a newline
+    .replace(/[•●▪■☑✔–—―]/g, "-") // Replace bullet points & dashes with hyphen
+    .replace(/[_|]/g, " ") // Remove underscores & pipes
+    .replace(/\n{2,}/g, "\n\n") // Reduce multiple newlines to max 2
+    .replace(/(\w+)\n(\w+)/g, "$1 $2") // Fix broken words split by newlines
+    .replace(/\s{2,}/g, " ") // Remove extra spaces
     .trim(); // Trim extra spaces at the start/end
 };
 

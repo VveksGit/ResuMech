@@ -5,6 +5,7 @@ import { upload } from "../Middlewares/multer.middleware";
 import authUser from "../Middlewares/JwtAuth.middleware";
 import { extractText } from "../Controllers/extract.controller";
 import fs from "fs";
+import fetchJobs from "../Controllers/fetchJobs.controller";
 
 const routers = Router();
 
@@ -26,18 +27,17 @@ routers
       const extractedText = await extractText(pdfPath);
       fs.unlinkSync(pdfPath);
 
-      if (extractedText) {
-        res.status(200).json({
-          message: "Text extracted successfully",
-          text: extractedText,
-        });
-        return;
-      } else {
-        res.status(500).json({
-          message: "Failed to extract text",
-        });
+      if (!extractedText) {
+        res.status(500).json({ message: "Failed to extract text" });
         return;
       }
+
+      const fetchedJobs = await fetchJobs(extractedText);
+
+      res.status(200).json({
+        message: "Jobs fetched successfully",
+        data: fetchedJobs,
+      });
     } catch (error) {
       console.error("Error processing PDF:", error);
       res.status(500).json({ message: "Server error" });
