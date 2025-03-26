@@ -7,51 +7,75 @@ interface Job {
   location: string;
   url: string;
 }
-interface data {
+
+interface NLPData {
   job_titles: string[];
   locations: string[];
 }
 
-const fetchJobs = async (text: string): Promise<Job[] | undefined> => {
+interface OrganizedJobs {
+  [key: string]: {
+    [location: string]: Job[];
+  };
+}
+
+const fetchJobs = async (text: string): Promise<OrganizedJobs> => {
   if (!process.env.ADZUNA_API_ID || !process.env.ADZUNA_API_KEY) {
     throw new Error("Missing Adzuna API credentials");
   }
 
   const nlpResponse = await nlpApiReq(text);
-
   if (!nlpResponse) {
     throw new Error("NLP API returned undefined");
   }
-  const data: data = nlpResponse;
 
-  const adzunaUrl = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${
-    process.env.ADZUNA_API_ID
-  }&app_key=${
-    process.env.ADZUNA_API_KEY
-  }&results_per_page=10&what=${encodeURIComponent(data.job_titles[0])}${
-    data.locations.length > 0
-      ? `&where=${encodeURIComponent(data.locations[0])}`
-      : `&where=Remote`
-  }`;
+  const data: NLPData = nlpResponse;
+  console.log(data);
+  const organizedJobs: OrganizedJobs = {};
 
-  try {
-    const adzunaResponse = await axios.get(adzunaUrl);
+  // Use Promise.all to make concurrent API calls
+  const jobPromises = data.job_titles.flatMap((title) =>
+    data.locations.map(async (location) => {
+      const adzunaUrl = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${
+        process.env.ADZUNA_API_ID
+      }&app_key=${
+        process.env.ADZUNA_API_KEY
+      }&results_per_page=5&what=${encodeURIComponent(title)}${
+        location !== "Remote"
+          ? `&where=${encodeURIComponent(location)}`
+          : "&where=Remote"
+      }`;
 
-    const jobs: Job[] = adzunaResponse.data.results.map((job: any) => ({
-      title: job.title,
-      company: job.company.display_name,
-      location: job.location.display_name,
-      url: job.redirect_url,
-    }));
+      try {
+        const adzunaResponse = await axios.get(adzunaUrl);
+        const jobs = adzunaResponse.data.results.map((job: any) => ({
+          title: job.title,
+          company: job.company.display_name,
+          location: job.location.display_name,
+          url: job.redirect_url,
+        }));
 
-    return jobs;
-  } catch (adzunaError) {
-    console.error(
-      "Adzuna API Error:",
-      adzunaError instanceof Error ? adzunaError.message : adzunaError
-    );
-    throw new Error("Failed to fetch jobs from Adzuna");
-  }
+        // Organize jobs by title and location
+        if (!organizedJobs[title]) {
+          organizedJobs[title] = {};
+        }
+        organizedJobs[title][location] = jobs;
+
+        return { title, location, jobs };
+      } catch (adzunaError) {
+        console.error(
+          `Error fetching jobs for ${title} in ${location}:`,
+          adzunaError instanceof Error ? adzunaError.message : adzunaError
+        );
+        return { title, location, jobs: [] };
+      }
+    })
+  );
+
+  // Wait for all promises to resolve
+  await Promise.all(jobPromises);
+
+  return organizedJobs;
 };
 
 export default fetchJobs;

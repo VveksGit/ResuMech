@@ -33,6 +33,13 @@ const nlpApiReq = async (text: string): Promise<FilterData | undefined> => {
       return undefined;
     }
 
+    if (data.job_titles.length > 3) {
+      data.job_titles = data.job_titles.slice(0, 3);
+    }
+    if (data.locations.length > 0) {
+      data.locations = ["Remote", ...data.locations.slice(0, 2)];
+    }
+
     const { skills, ...filteredData } = data;
 
     return filteredData;
