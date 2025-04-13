@@ -1,65 +1,108 @@
-// import { Resume } from "../Models/resume.model";
-// import { Request, Response } from "express";
-// import uploadOnCloudinary from "../cloudinary/upload.cloudinary";
+import { Resume } from "../Models/resume.model";
+import { Request, Response } from "express";
+import userModel from "../Models/user.model";
 
-// interface AuthReq extends Request {
-//   user?: {
-//     id: string;
-//     email: string;
-//     iat: number;
-//     exp: number;
-//   };
-// }
+interface AuthReq extends Request {
+  user?: {
+    id: string;
+    email: string;
+    iat: number;
+    exp: number;
+  };
+}
 
-// const uploadResume = async (req: AuthReq, res: Response) => {
-//   try {
-//     const jwtUser = req.user;
-//     if (!jwtUser) {
-//       res.status(400).json({ message: "Unauthorized user access!" });
-//       return;
-//     }
+interface nlpData {
+  job_titles: string[];
+  locations: string[];
+}
 
-//     const userId = jwtUser.id;
-//     if (!userId) {
-//       res.status(400).json({ message: "Unauthorized user ID!" });
-//       return;
-//     }
+interface fetchedNlpDataAndJobs {
+  nlpData: nlpData;
+  jobs: Object;
+}
 
-//     if (!req.file) {
-//       res.status(400).json({ message: "File was not uploaded" });
-//       return;
-//     }
+const uploadResume = async (
+  req: AuthReq,
+  res: Response,
+  resumeUrl: string,
+  nlpDataAndJobObject: fetchedNlpDataAndJobs
+) => {
+  try {
+    const jwtUser = req.user;
+    if (!jwtUser) {
+      res.status(400).json({ message: "Unauthorized user access!" });
+      return;
+    }
 
-//     const resumeLocalPath = req.file.path;
-//     if (!resumeLocalPath) {
-//       res.status(400).json({ message: "Resume pdf is required" });
-//       return;
-//     }
+    const userId = jwtUser.id;
+    if (!userId) {
+      res.status(400).json({ message: "Unauthorized user ID!" });
+      return;
+    }
 
-//     const uploadResumeOnCloudinary = await uploadOnCloudinary(resumeLocalPath);
-//     if (!uploadResumeOnCloudinary) {
-//       res.status(500).json({ message: "Failed to upload the pdf" });
-//       return;
-//     }
+    const user = await userModel.findById(userId);
 
-//     const resumeUrl = uploadResumeOnCloudinary.secure_url;
+    if (!user) {
+      console.log("The user does not exist");
+      return;
+    }
 
-//     const resume = await Resume.create({
-//       userId,
-//       resumeUrl,
-//     });
+    if (!resumeUrl) {
+      res.status(500).json({ message: "There is no resumeUrl" });
+      return;
+    }
 
-//     res
-//       .status(200)
-//       .json({ message: `The pdf uploaded succesfully: ${resume}` });
-//   } catch (error) {
-//     console.log(error);
+    if (
+      !nlpDataAndJobObject ||
+      !nlpDataAndJobObject.nlpData ||
+      !nlpDataAndJobObject.jobs ||
+      !nlpDataAndJobObject.nlpData.job_titles ||
+      !nlpDataAndJobObject.nlpData.locations
+    ) {
+      res
+        .status(500)
+        .json({ message: "The nlpDataAndJObObject is incomplete" });
+      return;
+    }
 
-//     res.status(500).json({
-//       message: `Can't upload the resume: ${(error as Error).message}`,
-//     });
-//     return;
-//   }
-// };
+    const job_titles = nlpDataAndJobObject.nlpData.job_titles;
+    const locations = nlpDataAndJobObject.nlpData.locations;
+    const jobs = nlpDataAndJobObject.jobs;
 
-// export default uploadResume;
+    const existingResumeData = await Resume.findOne({ userId });
+    console.log(existingResumeData);
+
+    if (existingResumeData) {
+      existingResumeData.resumeUrl = resumeUrl;
+      existingResumeData.job_titles = job_titles;
+      existingResumeData.locations = locations;
+      existingResumeData.jobs = jobs;
+      await existingResumeData.save();
+
+      if (!user.userQueries.includes(existingResumeData._id)) {
+        user.userQueries.push(existingResumeData._id);
+        await user.save();
+      }
+      return existingResumeData;
+    }
+
+    const resume = await Resume.create({
+      userId,
+      resumeUrl,
+      job_titles,
+      locations,
+      jobs,
+    });
+
+    user.userQueries.push(resume._id);
+    await user.save();
+
+    return resume;
+  } catch (error) {
+    console.log(error);
+    console.log("Can't upload the resume: ", (error as Error).message);
+    return;
+  }
+};
+
+export default uploadResume;

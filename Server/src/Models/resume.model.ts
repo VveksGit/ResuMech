@@ -1,37 +1,52 @@
-// import mongoose from "mongoose";
+import mongoose from "mongoose";
 
-// const resumeSchema = new mongoose.Schema(
-//   {
-//     userId: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       required: true,
-//     },
-//     resumeUrl: {
-//       type: String,
-//       required: true,
-//     },
-//     status: {
-//       type: String,
-//       enum: ["pending", "processed", "error"],
-//       default: "pending",
-//     },
-//     keywords: {
-//       type: [String],
-//       default: [],
-//     },
-//     atsScore: {
-//       type: Number,
-//       min: 0,
-//       max: 100,
-//       default: null,
-//     },
-//     improvements: {
-//       type: [String],
-//       default: [],
-//     },
-//   },
-//   { timestamps: true }
-// );
+// Job Posting Schema
+const jobPostingSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+  },
+  company: {
+    type: String,
+    required: true,
+  },
+  location: {
+    type: String,
+    required: true,
+  },
+  url: {
+    type: String,
+    required: true,
+  },
+});
 
-// export const Resume = mongoose.model("Resume", resumeSchema);
+// Resume Schema
+const resumeSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    resumeUrl: {
+      type: String,
+      required: true,
+    },
+    job_titles: {
+      type: [String],
+    },
+    locations: {
+      type: [String],
+    },
+    jobs: {
+      type: mongoose.Schema.Types.Mixed, // Use Mixed type for flexible nested object
+      default: {},
+    },
+  },
+  {
+    timestamps: true,
+    strict: false, // Allow additional fields
+  }
+);
+
+export const Resume = mongoose.model("Resume", resumeSchema);

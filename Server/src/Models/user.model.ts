@@ -6,6 +6,7 @@ interface IUser extends Document {
   fullName: string;
   email: string;
   password: string;
+  userQueries: mongoose.Types.ObjectId[];
   refreshToken?: string;
   createdAt: Date; // Explicitly include timestamps
   updatedAt: Date;
@@ -34,6 +35,15 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+    },
+    userQueries: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Resume",
+        },
+      ],
+      default: [],
     },
     refreshToken: {
       type: String,

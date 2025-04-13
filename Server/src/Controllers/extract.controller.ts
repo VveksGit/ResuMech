@@ -1,7 +1,6 @@
 import fs from "fs";
 import pdf from "pdf-parse";
-import { fromPath as pdfToImage } from "pdf2pic";
-import Tesseract from "tesseract.js";
+import { PDFExtract } from "pdf.js-extract";
 
 const cleanText = (text: string): string => {
   return text
@@ -20,65 +19,74 @@ const cleanText = (text: string): string => {
 export const extractTextFromPDF = async (
   pdfPath: string
 ): Promise<string | null> => {
-  console.log("Trying to extract text using pdf-parse..");
-
-  const dataBuffer = fs.readFileSync(pdfPath); // Reads the PDF file and stores it as a buffer (Binary Format). The file is NOT converted, just loaded into memory as raw binary data.
-
-  const data = await pdf(dataBuffer); // Processes the buffer data using pdf-parse. Extracts the text content from the PDF (if it is text-based).
-
-  const extractedText = data.text.trim(); // Removes extra spaces from the extracted text.
-
-  if (extractedText.length > 0) {
-    console.log("Extracted text using pdf-parse");
-    return cleanText(extractedText);
-  }
-  console.log("No text found in pdf-parse. Switching to OCR... ");
-  return null;
-};
-
-export const extractedTextFromImage = async (
-  pdfPath: string
-): Promise<string | null> => {
-  console.log("Converting PDF to images for OCR...");
-
-  const converter = pdfToImage(pdfPath, {
-    density: 300,
-    saveFilename: "page",
-    savePath: "../../public/images",
-    format: "png",
-    width: 1000,
-    height: 1200,
-  });
-
   try {
-    const result = await converter(1);
-    if (!result.path) {
-      console.log("failed to convert pdf to image");
-      throw Error;
-    }
-    const ocrResult = await Tesseract.recognize(result.path, "eng");
-
-    const extractedText = ocrResult.data.text.trim();
+    console.log("Trying to extract text using pdf-parse...");
+    const dataBuffer = fs.readFileSync(pdfPath);
+    const data = await pdf(dataBuffer);
+    const extractedText = data.text.trim();
 
     if (extractedText.length > 0) {
-      console.log("Extracted text using OCR.");
+      console.log("Extracted text using pdf-parse");
       return cleanText(extractedText);
-    } else {
-      console.log("OCR extraction failed.");
-      return null;
     }
+
+    console.log("No text found in pdf-parse. Trying pdf.js-extract...");
+
+    // Try an alternative extraction method
+    const pdfExtract = new PDFExtract();
+    const extractResult = await pdfExtract.extract(pdfPath);
+
+    // Combine all text from all pages
+    const altText = extractResult.pages
+      .map((page) => page.content.map((item) => item.str).join(" "))
+      .join("\n");
+
+    if (altText.trim().length > 0) {
+      console.log("Extracted text using pdf.js-extract");
+      return cleanText(altText);
+    }
+
+    console.log("No text found in this PDF. It may be image-based or scanned.");
+    return null;
   } catch (error) {
-    console.error("Error during OCR:", error);
+    console.error("Error extracting text from PDF:", error);
     return null;
   }
 };
 
+// Enhanced function with additional diagnostics
 export const extractText = async (pdfPath: string): Promise<string | null> => {
-  let extractedText = await extractTextFromPDF(pdfPath);
+  try {
+    // Basic PDF validation
+    if (!fs.existsSync(pdfPath)) {
+      console.error("PDF file does not exist:", pdfPath);
+      return null;
+    }
 
-  if (!extractedText) {
-    extractedText = await extractedTextFromImage(pdfPath);
+    const stats = fs.statSync(pdfPath);
+    if (stats.size === 0) {
+      console.error("PDF file is empty:", pdfPath);
+      return null;
+    }
+
+    console.log(`Processing PDF: ${pdfPath} (${stats.size} bytes)`);
+
+    // Attempt text extraction
+    const extractedText = await extractTextFromPDF(pdfPath);
+
+    if (extractedText) {
+      console.log(
+        `Successfully extracted ${extractedText.length} characters of text`
+      );
+      return extractedText;
+    } else {
+      console.log(
+        "Text extraction failed. This PDF may be image-based or scanned."
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error("Unexpected error during extraction:", error);
+    return null;
   }
-
-  return extractedText;
 };

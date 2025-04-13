@@ -19,7 +19,12 @@ interface OrganizedJobs {
   };
 }
 
-const fetchJobs = async (text: string): Promise<OrganizedJobs> => {
+interface FetchJobsResult {
+  nlpData: NLPData;
+  jobs: OrganizedJobs;
+}
+
+const fetchJobs = async (text: string): Promise<FetchJobsResult> => {
   if (!process.env.ADZUNA_API_ID || !process.env.ADZUNA_API_KEY) {
     throw new Error("Missing Adzuna API credentials");
   }
@@ -29,13 +34,14 @@ const fetchJobs = async (text: string): Promise<OrganizedJobs> => {
     throw new Error("NLP API returned undefined");
   }
 
-  const data: NLPData = nlpResponse;
-  console.log(data);
+  const nlpData: NLPData = nlpResponse;
+  console.log("NLP Data:", nlpData);
+
   const organizedJobs: OrganizedJobs = {};
 
   // Use Promise.all to make concurrent API calls
-  const jobPromises = data.job_titles.flatMap((title) =>
-    data.locations.map(async (location) => {
+  const jobPromises = nlpData.job_titles.flatMap((title) =>
+    nlpData.locations.map(async (location) => {
       const adzunaUrl = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${
         process.env.ADZUNA_API_ID
       }&app_key=${
@@ -60,7 +66,6 @@ const fetchJobs = async (text: string): Promise<OrganizedJobs> => {
           organizedJobs[title] = {};
         }
         organizedJobs[title][location] = jobs;
-
         return { title, location, jobs };
       } catch (adzunaError) {
         console.error(
@@ -75,7 +80,10 @@ const fetchJobs = async (text: string): Promise<OrganizedJobs> => {
   // Wait for all promises to resolve
   await Promise.all(jobPromises);
 
-  return organizedJobs;
+  return {
+    nlpData,
+    jobs: organizedJobs,
+  };
 };
 
 export default fetchJobs;
